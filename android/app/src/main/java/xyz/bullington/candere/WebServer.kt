@@ -190,10 +190,13 @@ fun onvifLogin(
     onvifRes = onvif.getSnapshotURI()
 
     if (!onvifRes.success) {
-        return false
+        // this is okay, I guess?
+        // not all the competition cameras could connect w/o this
+        // we fake it
+        obj.put("snapshotUrl", "http://127.0.0.1:$PORT/black.png")
+    } else {
+        obj.put("snapshotUrl", onvif.snapshotURI!!)
     }
-
-    obj.put("snapshotUrl", onvif.snapshotURI!!)
 
     server.uiHandler.post {
         val toast = Toast.makeText(server.context, "Snapshot URI retrieved", Toast.LENGTH_SHORT)
@@ -284,7 +287,7 @@ class WebServer(
                     val data = JSONObject()
 
                     data.put("operation", "+")
-                    data.put("item", obj)
+                    data.put("item", serializeDevice(device))
 
                     return newFixedLengthResponse(serializeResponse(
                             JSONObject(mapOf(Pair("success", true))),
