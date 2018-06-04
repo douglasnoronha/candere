@@ -45,10 +45,12 @@ class OnvifServices {
                             paths.deviceInformation = retrievePath(uri)
 
                         } else if (currentNamespace == GetProfiles.namespace() ||
-                                currentNamespace == GetStreamURI.namespace()) {
+                                currentNamespace == GetStreamURI.namespace() ||
+                                currentNamespace == OnvifRequest.Type.GetSnapshotURI.namespace()) {
                             val uri = retrieveXAddr(xpp)
                             paths.profiles = retrievePath(uri)
                             paths.streamURI = retrievePath(uri)
+                            paths.snapshotURI = retrievePath(uri)
                         }
                     }
 

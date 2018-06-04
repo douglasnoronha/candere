@@ -55,17 +55,17 @@ class DataModel<T: DataBase> {
         return this.fetch();
     }
 
-    add = (item: T): Promise<boolean> => this.handler.fetch(
+    add = (item: T): Promise<{ success: boolean }> => this.handler.fetch(
         path.join(this.endpoint, "add"),
         item
     );
 
-    remove = (item: T): Promise<boolean> => this.handler.fetch(
+    remove = (item: T): Promise<{ success: boolean }> => this.handler.fetch(
         path.join(this.endpoint, "remove"),
         item
     );
 
-    refresh = (item: T): Promise<boolean> => this.handler.fetch(
+    refresh = (item: T): Promise<{ success: boolean }> => this.handler.fetch(
         path.join(this.endpoint, "refresh"),
         item
     )

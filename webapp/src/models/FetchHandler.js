@@ -7,7 +7,7 @@ import type {JSONResponse} from "./types";
 const ENDPOINT = "http://127.0.0.1:27960"
 
 export default class FetchHandler extends EventEmitter {
-  _fetch: fetch = global.fetch;
+  _fetch: fetch = window.fetch.bind(window);
 
   _post(url: string, data: any): Promise<Response> {
     return this._fetch(url, {

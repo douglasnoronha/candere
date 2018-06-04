@@ -7,6 +7,8 @@ import com.rvirin.onvif.onvifcamera.OnvifDeviceInformation.Companion.deviceInfor
 import com.rvirin.onvif.onvifcamera.OnvifDeviceInformation.Companion.deviceInformationToString
 import com.rvirin.onvif.onvifcamera.OnvifDeviceInformation.Companion.parseDeviceInformationResponse
 import com.rvirin.onvif.onvifcamera.OnvifMediaProfiles.Companion.getProfilesCommand
+import com.rvirin.onvif.onvifcamera.OnvifMediaSnapshotURI.Companion.getSnapshotURICommand
+import com.rvirin.onvif.onvifcamera.OnvifMediaSnapshotURI.Companion.parseSnapshotURIXML
 import com.rvirin.onvif.onvifcamera.OnvifMediaStreamURI.Companion.getStreamURICommand
 import com.rvirin.onvif.onvifcamera.OnvifMediaStreamURI.Companion.parseStreamURIXML
 import com.rvirin.onvif.onvifcamera.OnvifServices.Companion.servicesCommand
@@ -142,7 +144,7 @@ class OnvifDevice(val ipAddress: String, @JvmField val username: String, @JvmFie
 
     fun getSnapshotURI(): OnvifResponse {
         val profile = mediaProfiles.firstOrNull()!!
-        val request = OnvifRequest(getStreamURICommand(profile), OnvifRequest.Type.GetSnapshotURI)
+        val request = OnvifRequest(getSnapshotURICommand(profile), OnvifRequest.Type.GetSnapshotURI)
         return ONVIFcommunication().execute(request).get()
     }
 
@@ -150,11 +152,6 @@ class OnvifDevice(val ipAddress: String, @JvmField val username: String, @JvmFie
         val profile = mediaProfiles.firstOrNull()!!
         val request = OnvifRequest(getStreamURICommand(profile), OnvifRequest.Type.GetStreamURI)
         return ONVIFcommunication().execute(request).get()
-    }
-
-    fun getStreamURI(profile: MediaProfile) {
-        val request = OnvifRequest(getStreamURICommand(profile), OnvifRequest.Type.GetStreamURI)
-        ONVIFcommunication().execute(request)
     }
 
     /**
@@ -194,6 +191,8 @@ class OnvifDevice(val ipAddress: String, @JvmField val username: String, @JvmFie
                 Log.e("ERROR", e.message!!)
                 e.printStackTrace()
             }
+
+            Log.d("REQUEST", request?.url().toString())
 
             var result = OnvifResponse(onvifRequest)
 
@@ -354,8 +353,8 @@ class OnvifDevice(val ipAddress: String, @JvmField val username: String, @JvmFie
                 }
             } else if (result.request.type == OnvifRequest.Type.GetSnapshotURI) {
                 result.result?.let {
-                    val snapshotURI = parseStreamURIXML(it)
-                    currentDevice.snapshotURI = appendCredentials(snapshotURI)
+                    val snapshotURI = parseSnapshotURIXML(it)
+                    currentDevice.snapshotURI = snapshotURI
                     parsedResult = "Snapshot URI retrieved."
                 }
             }

@@ -3,16 +3,81 @@ package xyz.bullington.candere
 import android.content.Context
 import android.database.sqlite.SQLiteException
 import android.os.Handler
+import android.util.Log
 import android.widget.Toast
 
 import com.rvirin.onvif.onvifcamera.OnvifDevice
-
+import com.rvirin.onvif.onvifcamera.currentDevice
 import fi.iki.elonen.NanoHTTPD
+
+import fi.iki.elonen.SimpleWebServer
 
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
+import java.io.InputStream
 
 import java.util.*
+
+const val TAG = "WebServer"
+
+class HTTPSessionProxy(
+        private val session: NanoHTTPD.IHTTPSession,
+        private val newUri: String
+) : NanoHTTPD.IHTTPSession {
+
+    init {
+        Log.i(TAG, "HTTPSessionProxy: $newUri")
+    }
+
+    override fun getRemoteIpAddress(): String {
+        return session.remoteIpAddress
+    }
+
+    override fun getQueryParameterString(): String {
+        return session.queryParameterString
+    }
+
+    override fun getCookies(): NanoHTTPD.CookieHandler {
+        return session.cookies
+    }
+
+    override fun getMethod(): NanoHTTPD.Method {
+        return session.method
+    }
+
+    override fun getUri(): String {
+        return newUri
+    }
+
+    override fun getParms(): MutableMap<String, String> {
+        return session.parms
+    }
+
+    override fun getRemoteHostName(): String {
+        return session.remoteHostName
+    }
+
+    override fun execute() {
+        session.execute()
+    }
+
+    override fun getHeaders(): MutableMap<String, String> {
+        return session.headers
+    }
+
+    override fun getParameters(): MutableMap<String, MutableList<String>> {
+        return session.parameters
+    }
+
+    override fun parseBody(files: MutableMap<String, String>?) {
+        session.parseBody(files)
+    }
+
+    override fun getInputStream(): InputStream {
+        return session.inputStream
+    }
+}
 
 fun serializeDevice(device: Device): JSONObject {
     val obj = JSONObject()
@@ -53,9 +118,14 @@ fun serializeResponse(response: JSONObject?, data: Array<Pair<String, JSONObject
     val res = JSONObject()
 
     response?.let { response -> res.put("response", response) }
+
+    val dataObj = JSONObject()
+
     data.forEach { (key, value) ->
-        res.put(key, value)
+        dataObj.put(key, value)
     }
+
+    res.put("data", dataObj)
 
     return res
 }
@@ -66,12 +136,15 @@ fun onvifLogin(
         address: String,
         username: String,
         password: String): Boolean {
+    Log.i(TAG, "$address $username $password")
     val onvif = OnvifDevice(address, username, password)
+    currentDevice = onvif
 
     // get services
     var onvifRes = onvif.getServices()
 
     if (!onvifRes.success) {
+        Log.i(TAG, "failed on get services ${onvifRes.error}")
         return false
     }
 
@@ -79,6 +152,7 @@ fun onvifLogin(
     onvifRes = onvif.getDeviceInformation()
 
     if (!onvifRes.success) {
+        Log.i(TAG, "failed on get device information ${onvifRes.error}")
         return false
     }
 
@@ -137,11 +211,15 @@ class WebServer(
         // only use from within ui handler
         internal val context: Context,
         internal val uiHandler: Handler,
-        private val db: DeviceDatabase, port: Int
-) : NanoHTTPD("127.0.0.1", port) {
+        private val db: DeviceDatabase,
+        port: Int,
+        directory: String
+) : SimpleWebServer("127.0.0.1", port, File(directory), true) {
 
     override fun serve(session: IHTTPSession): Response {
         val uri = session.uri
+        Log.i(TAG, "uri: $uri")
+
         val dbErrorRes = newFixedLengthResponse(
                 Response.Status.INTERNAL_ERROR,
                 MIME_PLAINTEXT,
@@ -281,9 +359,12 @@ class WebServer(
             }
         }
 
-        return newFixedLengthResponse(
-                Response.Status.NOT_FOUND,
-                MIME_PLAINTEXT,
-                "not found $uri")
+        if (uri.startsWith("/static")) {
+            val index = "/static".length
+            val suffix = if (index == uri.length) "/" else ""
+            return super.serve(HTTPSessionProxy(session, uri.substring(index) + suffix))
+        }
+
+        return super.serve(session)
     }
 }

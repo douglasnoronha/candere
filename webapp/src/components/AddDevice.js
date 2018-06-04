@@ -69,7 +69,7 @@ class AddDevice extends Component<Props, State> {
     const {models: {deviceGridModel}} = this.props;
 
     deviceGridModel.add({id: 0, nickname, address, username, password}).then(result => {
-      if (result) {
+      if (result && result.success) {
         this.setState({ redirect: true });
       } else {
         this.setState({ failed: true });

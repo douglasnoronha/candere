@@ -62,7 +62,7 @@ const styles = {
 };
 
 type DeviceDetailsProps = Props & {
-  id: number
+  id: string
 };
 
 type State = {
@@ -94,9 +94,10 @@ class DeviceDetails extends Component<DeviceDetailsProps, State> {
 
   _update() {
     const {id, models: {deviceGridModel}} = this.props;
+    const idInt = parseInt(id);
 
-    if (deviceGridModel.items.has(id)) {
-      this.setState({ device: deviceGridModel.items.get(id)});
+    if (deviceGridModel.items.has(idInt)) {
+      this.setState({ device: deviceGridModel.items.get(idInt)});
     }
   }
 
