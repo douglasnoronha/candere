@@ -47,6 +47,7 @@ dependencies {
     implementation 'org.nanohttpd:nanohttpd:2.3.1'
     implementation 'org.nanohttpd:nanohttpd-webserver:2.3.1'
 
+    implementation 'com.github.potterhsu:RtspLibrary:v1.0'
     implementation project(':onvifcamera')
 
     testImplementation 'junit:junit:4.12'

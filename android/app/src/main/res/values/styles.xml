@@ -11,6 +11,7 @@
     <style name="ToolbarAppTheme" parent="AppTheme">
         <item name="android:textColorPrimary">@android:color/background_light</item>
         <item name="actionMenuTextColor">@android:color/background_light</item>
+        <item name="colorControlNormal">@android:color/background_light</item>
     </style>
 
 </resources>
