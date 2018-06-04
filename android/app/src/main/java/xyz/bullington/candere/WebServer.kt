@@ -5,19 +5,29 @@ import android.database.sqlite.SQLiteException
 import android.os.Handler
 import android.util.Log
 import android.widget.Toast
+import com.burgstaller.okhttp.AuthenticationCacheInterceptor
+import com.burgstaller.okhttp.CachingAuthenticatorDecorator
+import com.burgstaller.okhttp.digest.CachingAuthenticator
+import com.burgstaller.okhttp.digest.Credentials
+import com.burgstaller.okhttp.digest.DigestAuthenticator
 
 import com.rvirin.onvif.onvifcamera.OnvifDevice
 import com.rvirin.onvif.onvifcamera.currentDevice
-import fi.iki.elonen.NanoHTTPD
 
+import fi.iki.elonen.NanoHTTPD
 import fi.iki.elonen.SimpleWebServer
+
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 import org.json.JSONArray
 import org.json.JSONObject
+
 import java.io.File
 import java.io.InputStream
 
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
 const val TAG = "WebServer"
 
@@ -88,7 +98,7 @@ fun serializeDevice(device: Device): JSONObject {
     obj.put("username", device.getUsername())
     obj.put("password", device.getPassword())
     obj.put("manufacturer", device.getManufacturer())
-    obj.put("snapshotUrl", device.getSnapshotUrl())
+    obj.put("snapshotUrl", "http://127.0.0.1:$PORT/devices/snapshot/${device.getId()}")
     obj.put("rtspUrl", device.getRtspUrl())
 
     return obj
@@ -215,7 +225,6 @@ class WebServer(
         port: Int,
         directory: String
 ) : SimpleWebServer("127.0.0.1", port, File(directory), true) {
-
     override fun serve(session: IHTTPSession): Response {
         val uri = session.uri
         Log.i(TAG, "uri: $uri")
@@ -355,6 +364,57 @@ class WebServer(
                     ).toString())
                 }
             } catch (e: SQLiteException) {
+                return dbErrorRes
+            }
+        }
+
+        if (uri.startsWith("/devices/snapshot")) {
+            try {
+                val id = uri.substring("/devices/snapshot".length).trim().trim('/').toInt()
+
+                // not enough time in contest to actually use SQL correctly here
+                var device: Device? = null
+                db.deviceDao().fetch().forEach { potentialDevice ->
+                    if (potentialDevice.getId() == id) {
+                        device = potentialDevice
+                    }
+                }
+
+                device?.let { device ->
+                    val authenticator = DigestAuthenticator(Credentials(device.getUsername(), device.getPassword()))
+                    val authCache = ConcurrentHashMap<String, CachingAuthenticator>()
+
+                    val okClient: OkHttpClient = OkHttpClient.Builder()
+                            .authenticator(CachingAuthenticatorDecorator(authenticator, authCache))
+                            .addInterceptor(AuthenticationCacheInterceptor(authCache))
+                            .build()
+
+                    val okReq = Request.Builder()
+                            .url(device.getSnapshotUrl())
+                            .get()
+                            .build()
+
+                    val okRes = okClient.newCall(okReq).execute()
+
+                    if (okRes.body() == null) {
+                        return dbErrorRes
+                    }
+
+                    val res = newFixedLengthResponse(
+                            Response.Status.lookup(okRes.code()),
+                            okRes.header("Content-Type"),
+                            okRes.body()!!.byteStream(),
+                            okRes.body()!!.contentLength())
+
+                    okRes.headers().toMultimap().forEach { (key, value) ->
+                        value?.forEach { header ->
+                            res.addHeader(key, header)
+                        }
+                    }
+
+                    return res
+                }
+            } catch (e: Exception) {
                 return dbErrorRes
             }
         }

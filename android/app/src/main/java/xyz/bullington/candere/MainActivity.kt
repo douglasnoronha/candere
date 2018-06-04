@@ -96,6 +96,14 @@ class MainActivity : AppCompatActivity() {
         mWebServer?.stop()
     }
 
+    override fun onBackPressed() {
+        if (mWebView != null && mWebView!!.canGoBack()) {
+            mWebView?.goBack()
+        } else {
+            super.onBackPressed()
+        }
+    }
+
     fun launchStreamActivity(rtspUrl: String) {
         val intent = Intent(this, StreamActivity::class.java).apply {
             putExtra(RTSP_URL, rtspUrl)
